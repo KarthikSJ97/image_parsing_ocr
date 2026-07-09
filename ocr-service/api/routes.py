@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import (
     APIRouter,
     File,
+    Form,
     HTTPException,
     Request,
     UploadFile,
@@ -27,7 +28,7 @@ SUPPORTED_EXTENSIONS = {
 @router.post("/extract")
 async def extract(
     request: Request,
-    document_type: DocumentType,
+    document_type: DocumentType = Form(...),
     file: UploadFile = File(...),
 ):
     suffix = Path(file.filename).suffix.lower()
