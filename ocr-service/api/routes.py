@@ -1,24 +1,41 @@
-from pathlib import Path
 import os
 import tempfile
+from pathlib import Path
 
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import (
+    APIRouter,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+)
 
-from services.ocr_service import OCRService
+from models.document_type import DocumentType
 
 router = APIRouter()
 
-ocr_service = OCRService()
+
+SUPPORTED_EXTENSIONS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".bmp",
+    ".pdf",
+}
 
 
-@router.post("/ocr")
-async def extract(file: UploadFile = File(...)):
+@router.post("/extract")
+async def extract(
+    request: Request,
+    document_type: DocumentType,
+    file: UploadFile = File(...),
+):
     suffix = Path(file.filename).suffix.lower()
 
-    if suffix not in [".png", ".jpg", ".jpeg", ".bmp", ".pdf"]:
+    if suffix not in SUPPORTED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail="Unsupported file type"
+            detail=f"Unsupported file type: {suffix}",
         )
 
     image_path = None
@@ -31,9 +48,14 @@ async def extract(file: UploadFile = File(...)):
             tmp.write(await file.read())
             image_path = tmp.name
 
-        document = ocr_service.extract(image_path)
+        service = request.app.state.extraction_service
 
-        return document.model_dump()
+        result = service.extract(
+            image_path=image_path,
+            document_type=document_type.value,
+        )
+
+        return result.model_dump()
 
     finally:
         if image_path and os.path.exists(image_path):
