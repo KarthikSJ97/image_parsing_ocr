@@ -6,5 +6,13 @@ from models.ocr_line import OCRLine
 
 
 class OCRPage(BaseModel):
+
     page_number: int
-    lines: List[OCRLine]
+
+    width: int | None = None
+    
+    height: int | None = None
+
+    text: str
+
+    lines: list[OCRLine]
