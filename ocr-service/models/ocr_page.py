@@ -1,42 +1,38 @@
-import math
-import re
-
 from pydantic import BaseModel
 
 from models.ocr_line import OCRLine
-from utils.text_utils import TextUtils
 
 
 class OCRPage(BaseModel):
 
     page_number: int
 
-    width: int | None = None
+    width: int
 
-    height: int | None = None
+    height: int
 
     text: str
 
     lines: list[OCRLine]
 
-    # --------------------------------------------------
-    # Text Search
-    # --------------------------------------------------
-
     def find(self, keyword: str) -> OCRLine | None:
 
+        keyword = keyword.lower()
+
         for line in self.lines:
-            if TextUtils.contains(line.text, keyword):
+            if keyword in line.text.lower():
                 return line
 
         return None
 
     def find_all(self, keyword: str) -> list[OCRLine]:
 
+        keyword = keyword.lower()
+
         return [
             line
             for line in self.lines
-            if TextUtils.contains(line.text, keyword)
+            if keyword in line.text.lower()
         ]
 
     def fuzzy_find(
@@ -45,7 +41,10 @@ class OCRPage(BaseModel):
         threshold: float = 0.80,
     ) -> OCRLine | None:
 
+        from utils.text_utils import TextUtils
+
         for line in self.lines:
+
             if TextUtils.fuzzy_contains(
                 line.text,
                 keyword,
@@ -55,131 +54,87 @@ class OCRPage(BaseModel):
 
         return None
 
-    def regex(self, pattern: str) -> list[OCRLine]:
+    def regex(
+        self,
+        pattern: str,
+    ) -> list[OCRLine]:
 
-        regex = re.compile(pattern)
+        import re
 
         return [
             line
             for line in self.lines
-            if regex.search(line.text)
+            if re.search(pattern, line.text)
         ]
 
-    # --------------------------------------------------
-    # Spatial Search
-    # --------------------------------------------------
+    ####################################################################
+    # Spatial Helpers
+    ####################################################################
 
-    def lines_below(
+    def below(
         self,
-        line: OCRLine,
-        tolerance: float = 10,
+        reference: OCRLine,
     ) -> list[OCRLine]:
 
         return sorted(
             [
-                candidate
-                for candidate in self.lines
-                if candidate.center_y > line.center_y
-                and abs(candidate.center_x - line.center_x) <= tolerance
+                line
+                for line in self.lines
+                if line.center_y > reference.center_y
             ],
-            key=lambda x: x.center_y,
+            key=lambda l: l.center_y,
         )
 
-    def lines_above(
+    def above(
         self,
-        line: OCRLine,
-        tolerance: float = 10,
+        reference: OCRLine,
     ) -> list[OCRLine]:
 
         return sorted(
             [
-                candidate
-                for candidate in self.lines
-                if candidate.center_y < line.center_y
-                and abs(candidate.center_x - line.center_x) <= tolerance
+                line
+                for line in self.lines
+                if line.center_y < reference.center_y
             ],
-            key=lambda x: x.center_y,
-            reverse=True,
+            key=lambda l: -l.center_y,
         )
 
-    def lines_right_of(
+    def right_of(
         self,
-        line: OCRLine,
-        tolerance: float = 10,
+        reference: OCRLine,
     ) -> list[OCRLine]:
 
         return sorted(
             [
-                candidate
-                for candidate in self.lines
-                if candidate.center_x > line.center_x
-                and abs(candidate.center_y - line.center_y) <= tolerance
+                line
+                for line in self.lines
+                if line.center_x > reference.center_x
             ],
-            key=lambda x: x.center_x,
+            key=lambda l: l.center_x,
         )
 
-    def lines_left_of(
+    def left_of(
         self,
-        line: OCRLine,
-        tolerance: float = 10,
+        reference: OCRLine,
     ) -> list[OCRLine]:
 
         return sorted(
             [
-                candidate
-                for candidate in self.lines
-                if candidate.center_x < line.center_x
-                and abs(candidate.center_y - line.center_y) <= tolerance
+                line
+                for line in self.lines
+                if line.center_x < reference.center_x
             ],
-            key=lambda x: x.center_x,
-            reverse=True,
+            key=lambda l: -l.center_x,
         )
 
-    # --------------------------------------------------
-    # Nearest neighbours
-    # --------------------------------------------------
+    def nearest_below(
+        self,
+        reference: OCRLine,
+    ) -> OCRLine | None:
 
-    def nearest_below(self, line: OCRLine) -> OCRLine | None:
+        candidates = self.below(reference)
 
-        lines = self.lines_below(line)
+        if not candidates:
+            return None
 
-        return lines[0] if lines else None
-
-    def nearest_above(self, line: OCRLine) -> OCRLine | None:
-
-        lines = self.lines_above(line)
-
-        return lines[0] if lines else None
-
-    def nearest_right(self, line: OCRLine) -> OCRLine | None:
-
-        lines = self.lines_right_of(line)
-
-        return lines[0] if lines else None
-
-    def nearest_left(self, line: OCRLine) -> OCRLine | None:
-
-        lines = self.lines_left_of(line)
-
-        return lines[0] if lines else None
-
-    def nearest(self, line: OCRLine) -> OCRLine | None:
-
-        best = None
-        best_distance = float("inf")
-
-        for candidate in self.lines:
-
-            if candidate == line:
-                continue
-
-            distance = math.sqrt(
-                (candidate.center_x - line.center_x) ** 2
-                + (candidate.center_y - line.center_y) ** 2
-            )
-
-            if distance < best_distance:
-                best_distance = distance
-                best = candidate
-
-        return best
+        return candidates[0]
