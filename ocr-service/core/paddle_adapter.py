@@ -75,8 +75,8 @@ class PaddleAdapter:
 
             full_text_parts.append(page_text)
 
-            width = None
-            height = None
+            width = 0
+            height = 0
 
             doc_pre = page.get("doc_preprocessor_res") or {}
 
@@ -88,7 +88,7 @@ class PaddleAdapter:
 
             pages.append(
                 OCRPage(
-                    page_number = page.get("page_index") or (len(pages) + 1),
+                    page_number=page.get("page_index") or 0,
                     width=width,
                     height=height,
                     text=page_text,

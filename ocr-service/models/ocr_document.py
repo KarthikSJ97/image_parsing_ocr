@@ -161,3 +161,41 @@ class OCRDocument(BaseModel):
             result.append(line)
 
         return result
+
+    def find_page(
+        self,
+        line: OCRLine,
+    ) -> OCRPage | None:
+
+        for page in self.pages:
+
+            if line in page.lines:
+                return page
+
+        return None
+
+
+    def nearest_below(
+        self,
+        line: OCRLine,
+    ) -> OCRLine | None:
+
+        page = self.find_page(line)
+
+        if page is None:
+            return None
+
+        return page.nearest_below(line)
+
+
+    def below(
+        self,
+        line: OCRLine,
+    ) -> list[OCRLine]:
+
+        page = self.find_page(line)
+
+        if page is None:
+            return []
+
+        return page.below(line)    

@@ -24,6 +24,12 @@ class AadhaarParser(BaseParser):
         "help",
         "instruction",
         "sample",
+        "call",
+        "write",
+        "email",
+        "authenticate",
+        "identity",
+        "citizenship",
         "care of",
         "c/o",
         "s/o",
@@ -44,7 +50,7 @@ class AadhaarParser(BaseParser):
         }
 
         confidence = (
-            sum(value is not None for value in fields.values())
+            sum(v is not None for v in fields.values())
             / len(fields)
         )
 
@@ -55,24 +61,23 @@ class AadhaarParser(BaseParser):
             raw_text=document.full_text,
         )
 
+    ##############################################################
+    # NAME
+    ##############################################################
+
     def extract_name(
         self,
         document: OCRDocument,
     ) -> str | None:
 
-        candidates = document.between(
-            "Government of India",
-            "Male",
+        header = document.fuzzy_find(
+            "Government of India"
         )
 
-        if not candidates:
-            candidates = document.after(
-                "Government of India",
-                limit=15,
-            )
+        if header is None:
+            return None
 
-        best = None
-        best_score = -1
+        candidates = document.below(header)
 
         for line in candidates:
 
@@ -94,40 +99,43 @@ class AadhaarParser(BaseParser):
             if len(words) < 2:
                 continue
 
-            score = 0
+            if len(words) > 5:
+                continue
 
-            if 2 <= len(words) <= 4:
-                score += 10
+            if not all(
+                word[0].isalpha()
+                for word in words
+            ):
+                continue
 
-            if all(word[:1].isupper() for word in words):
-                score += 5
+            return text
 
-            score += len(text)
+        return None
 
-            if score > best_score:
-                best_score = score
-                best = text
-
-        return best
+    ##############################################################
+    # GENDER
+    ##############################################################
 
     def extract_gender(
         self,
         document: OCRDocument,
     ) -> str | None:
 
-        for page in document.pages:
+        for line in document.lines():
 
-            for line in page.lines:
+            text = line.text.lower()
 
-                text = line.text.lower()
+            if "female" in text:
+                return "Female"
 
-                if "female" in text:
-                    return "Female"
-
-                if "male" in text:
-                    return "Male"
+            if "male" in text:
+                return "Male"
 
         return None
+
+    ##############################################################
+    # YEAR
+    ##############################################################
 
     def extract_year_of_birth(
         self,
@@ -136,19 +144,17 @@ class AadhaarParser(BaseParser):
 
         for line in document.lines():
 
-            text = line.text
-
-            lower = text.lower()
+            lower = line.text.lower()
 
             if (
-                "year" in lower
-                or "birth" in lower
+                "birth" in lower
+                or "year" in lower
                 or "yob" in lower
             ):
 
                 match = re.search(
                     r"(19|20)\d{2}",
-                    text,
+                    line.text,
                 )
 
                 if match:
@@ -156,24 +162,25 @@ class AadhaarParser(BaseParser):
 
         return None
 
+    ##############################################################
+    # AADHAAR NUMBER
+    ##############################################################
+
     def extract_aadhaar_number(
         self,
         document: OCRDocument,
-    ) -> str |None:
+    ) -> str | None:
 
         candidates = re.findall(
             r"\b\d{4}\s\d{4}\s\d{4}\b",
             document.full_text,
         )
 
-        if not candidates:
-            return None
+        for number in candidates:
 
-        for candidate in candidates:
-
-            if candidate.startswith("1800"):
+            if number.startswith("1800"):
                 continue
 
-            return candidate
+            return number
 
-        return candidates[0]
+        return None
