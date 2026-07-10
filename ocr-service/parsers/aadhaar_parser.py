@@ -1,130 +1,179 @@
 import re
 
-from models.document_type import DocumentType
 from models.extraction_result import ExtractionResult
 from models.ocr_document import OCRDocument
 from parsers.base_parser import BaseParser
-from schemas.aadhaar_schema import AadhaarSchema
 
 
 class AadhaarParser(BaseParser):
 
-    AADHAAR_KEYWORDS = [
-        "aadhaar",
-        "government of india",
-        "unique identification authority",
+    BLACKLIST = {
+        "government",
+        "india",
         "uidai",
-    ]
+        "aadhaar",
+        "unique",
+        "identification",
+        "authority",
+        "enrollment",
+        "male",
+        "female",
+        "birth",
+        "year",
+        "address",
+        "help",
+        "instruction",
+        "sample",
+        "care of",
+        "c/o",
+        "s/o",
+        "d/o",
+        "w/o",
+    }
 
-    AADHAAR_NUMBER_REGEX = r"\d{4}\s?\d{4}\s?\d{4}"
+    def parse(
+        self,
+        document: OCRDocument,
+    ) -> ExtractionResult:
 
-    DOB_REGEX = r"\d{2}[/-]\d{2}[/-]\d{4}"
+        fields = {
+            "name": self.extract_name(document),
+            "aadhaar_number": self.extract_aadhaar_number(document),
+            "gender": self.extract_gender(document),
+            "year_of_birth": self.extract_year_of_birth(document),
+        }
 
-    YOB_REGEX = r"(?:year\s*of\s*birth|yob)\D*(\d{4})"
-
-    def parse(self, document: OCRDocument) -> ExtractionResult:
-
-        schema = AadhaarSchema()
-
-        if self.is_aadhaar(document):
-            schema.aadhaar_number = self.extract_aadhaar_number(document)
-            schema.name = self.extract_name(document)
-            schema.dob = self.extract_dob(document)
-            schema.yob = self.extract_yob(document)
-            schema.gender = self.extract_gender(document)
-            schema.address = self.extract_address(document)
+        confidence = (
+            sum(value is not None for value in fields.values())
+            / len(fields)
+        )
 
         return ExtractionResult(
-            document_type=DocumentType.AADHAAR.value,
-            confidence=document.average_confidence,
-            fields=schema.model_dump(exclude_none=True),
+            document_type="aadhaar",
+            confidence=confidence,
+            fields=fields,
             raw_text=document.full_text,
         )
 
-    def is_aadhaar(self, document: OCRDocument) -> bool:
-
-        score = 0
-
-        for keyword in self.AADHAAR_KEYWORDS:
-            if document.fuzzy_find(keyword):
-                score += 1
-
-        return score >= 2
-
-    def extract_aadhaar_number(
+    def extract_name(
         self,
         document: OCRDocument,
     ) -> str | None:
 
-        matches = document.regex(self.AADHAAR_NUMBER_REGEX)
-
-        if not matches:
-            return None
-
-        match = re.search(
-            self.AADHAAR_NUMBER_REGEX,
-            matches[0].text,
+        candidates = document.between(
+            "Government of India",
+            "Male",
         )
 
-        return match.group(0) if match else None
+        if not candidates:
+            candidates = document.after(
+                "Government of India",
+                limit=15,
+            )
 
-    def extract_dob(
-        self,
-        document: OCRDocument,
-    ) -> str | None:
+        best = None
+        best_score = -1
 
-        matches = document.regex(self.DOB_REGEX)
+        for line in candidates:
 
-        if not matches:
-            return None
+            text = line.text.strip()
 
-        match = re.search(
-            self.DOB_REGEX,
-            matches[0].text,
-        )
+            if not text:
+                continue
 
-        return match.group(0) if match else None
+            lower = text.lower()
 
-    def extract_yob(
-        self,
-        document: OCRDocument,
-    ) -> str | None:
+            if any(word in lower for word in self.BLACKLIST):
+                continue
 
-        match = re.search(
-            self.YOB_REGEX,
-            document.full_text,
-            re.IGNORECASE,
-        )
+            if re.search(r"\d", text):
+                continue
 
-        if match:
-            return match.group(1)
+            words = text.split()
 
-        return None
+            if len(words) < 2:
+                continue
+
+            score = 0
+
+            if 2 <= len(words) <= 4:
+                score += 10
+
+            if all(word[:1].isupper() for word in words):
+                score += 5
+
+            score += len(text)
+
+            if score > best_score:
+                best_score = score
+                best = text
+
+        return best
 
     def extract_gender(
         self,
         document: OCRDocument,
     ) -> str | None:
 
-        for gender in [
-            "Male",
-            "Female",
-            "Transgender",
-        ]:
+        for page in document.pages:
 
-            if document.find(gender):
-                return gender
+            for line in page.lines:
+
+                text = line.text.lower()
+
+                if "female" in text:
+                    return "Female"
+
+                if "male" in text:
+                    return "Male"
 
         return None
 
-    def extract_name(
+    def extract_year_of_birth(
         self,
         document: OCRDocument,
     ) -> str | None:
+
+        for line in document.lines():
+
+            text = line.text
+
+            lower = text.lower()
+
+            if (
+                "year" in lower
+                or "birth" in lower
+                or "yob" in lower
+            ):
+
+                match = re.search(
+                    r"(19|20)\d{2}",
+                    text,
+                )
+
+                if match:
+                    return match.group()
+
         return None
 
-    def extract_address(
+    def extract_aadhaar_number(
         self,
         document: OCRDocument,
-    ) -> str | None:
-        return None
+    ) -> str |None:
+
+        candidates = re.findall(
+            r"\b\d{4}\s\d{4}\s\d{4}\b",
+            document.full_text,
+        )
+
+        if not candidates:
+            return None
+
+        for candidate in candidates:
+
+            if candidate.startswith("1800"):
+                continue
+
+            return candidate
+
+        return candidates[0]
