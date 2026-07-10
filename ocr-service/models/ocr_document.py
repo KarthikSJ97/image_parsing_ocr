@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from models.ocr_line import OCRLine
 from models.ocr_page import OCRPage
-
+from utils.text_utils import TextUtils
 
 class OCRDocument(BaseModel):
 
@@ -83,3 +83,81 @@ class OCRDocument(BaseModel):
                 return page
 
         return None
+
+    
+    def after(
+        self,
+        keyword: str,
+        limit: int | None = None,
+    ) -> list[OCRLine]:
+
+        collecting = False
+        result: list[OCRLine] = []
+
+        for line in self.lines():
+
+            if collecting:
+                result.append(line)
+
+                if limit is not None and len(result) >= limit:
+                    break
+
+                continue
+
+            if TextUtils.fuzzy_contains(
+                line.text,
+                keyword,
+            ):
+                collecting = True
+
+        return result
+
+    def before(
+        self,
+        keyword: str,
+    ) -> list[OCRLine]:
+
+        result: list[OCRLine] = []
+
+        for line in self.lines():
+
+            if TextUtils.fuzzy_contains(
+                line.text,
+                keyword,
+            ):
+                break
+
+            result.append(line)
+
+        return result
+
+    def between(
+        self,
+        start: str,
+        end: str,
+    ) -> list[OCRLine]:
+
+        collecting = False
+        result: list[OCRLine] = []
+
+        for line in self.lines():
+
+            if not collecting:
+
+                if TextUtils.fuzzy_contains(
+                    line.text,
+                    start,
+                ):
+                    collecting = True
+
+                continue
+
+            if TextUtils.fuzzy_contains(
+                line.text,
+                end,
+            ):
+                break
+
+            result.append(line)
+
+        return result
