@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from models.ocr_line import OCRLine
 from models.ocr_page import OCRPage
 from utils.text_utils import TextUtils
+from models.ocr_region import OCRRegion
 
 class OCRDocument(BaseModel):
 
@@ -199,3 +200,16 @@ class OCRDocument(BaseModel):
             return []
 
         return page.below(line)    
+
+    def region_between(
+        self,
+        start: str,
+        end: str,
+    ) -> OCRRegion:
+
+        return OCRRegion(
+            self.between(
+                start,
+                end,
+            )
+        )    
