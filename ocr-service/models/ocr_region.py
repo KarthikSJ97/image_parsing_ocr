@@ -65,3 +65,82 @@ class OCRRegion:
                 re.IGNORECASE,
             )
         ]
+
+    def nearest_above(
+        self,
+        reference: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = [
+            line
+            for line in self._lines
+            if line.center_y < reference.center_y
+        ]
+
+        if not candidates:
+            return None
+
+        return max(
+            candidates,
+            key=lambda line: line.center_y,
+        )
+
+
+    def nearest_below(
+        self,
+        reference: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = [
+            line
+            for line in self._lines
+            if line.center_y > reference.center_y
+        ]
+
+        if not candidates:
+            return None
+
+        return min(
+            candidates,
+            key=lambda line: line.center_y,
+        )
+
+
+    def nearest_left(
+        self,
+        reference: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = [
+            line
+            for line in self._lines
+            if line.center_x < reference.center_x
+        ]
+
+        if not candidates:
+            return None
+
+        return max(
+            candidates,
+            key=lambda line: line.center_x,
+        )
+
+
+    def nearest_right(
+        self,
+        reference: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = [
+            line
+            for line in self._lines
+            if line.center_x > reference.center_x
+        ]
+
+        if not candidates:
+            return None
+
+        return min(
+            candidates,
+            key=lambda line: line.center_x,
+        )    
