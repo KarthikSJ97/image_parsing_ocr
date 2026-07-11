@@ -2,56 +2,33 @@ import re
 
 from models.extraction_result import ExtractionResult
 from models.ocr_document import OCRDocument
+from models.ocr_region import OCRRegion
 from parsers.base_parser import BaseParser
 
 
 class AadhaarParser(BaseParser):
-
-    BLACKLIST = {
-        "government",
-        "india",
-        "uidai",
-        "aadhaar",
-        "unique",
-        "identification",
-        "authority",
-        "enrollment",
-        "male",
-        "female",
-        "birth",
-        "year",
-        "address",
-        "help",
-        "instruction",
-        "sample",
-        "call",
-        "write",
-        "email",
-        "authenticate",
-        "identity",
-        "citizenship",
-        "care of",
-        "c/o",
-        "s/o",
-        "d/o",
-        "w/o",
-    }
 
     def parse(
         self,
         document: OCRDocument,
     ) -> ExtractionResult:
 
+        identity_region = self.get_identity_region(document)
+
         fields = {
-            "name": self.extract_name(document),
+            "name": self.extract_name(identity_region),
             "aadhaar_number": self.extract_aadhaar_number(document),
-            "gender": self.extract_gender(document),
-            "year_of_birth": self.extract_year_of_birth(document),
+            "gender": self.extract_gender(identity_region),
+            "year_of_birth": self.extract_year_of_birth(identity_region),
         }
 
         confidence = (
-            sum(v is not None for v in fields.values())
-            / len(fields)
+            sum(
+                value is not None
+                for value in fields.values()
+            )
+            /
+            len(fields)
         )
 
         return ExtractionResult(
@@ -61,56 +38,112 @@ class AadhaarParser(BaseParser):
             raw_text=document.full_text,
         )
 
+
+    ##############################################################
+    # REGION
+    ##############################################################
+
+    def get_identity_region(
+        self,
+        document: OCRDocument,
+    ) -> OCRRegion:
+
+        lines = document.between(
+            "Government of India",
+            "Address",
+        )
+
+        return OCRRegion(lines)
+
+
     ##############################################################
     # NAME
     ##############################################################
 
     def extract_name(
         self,
-        document: OCRDocument,
+        region: OCRRegion,
     ) -> str | None:
 
-        header = document.fuzzy_find(
-            "Government of India"
-        )
+        lines = region.lines()
 
-        if header is None:
+        father_index = None
+
+        for index, line in enumerate(lines):
+
+            text = line.text.lower()
+
+            if (
+                "s/o" in text
+                or "d/o" in text
+                or "w/o" in text
+                or "care of" in text
+            ):
+                father_index = index
+                break
+
+
+        if father_index is None:
             return None
 
-        candidates = document.below(header)
 
-        for line in candidates:
+        candidates = lines[:father_index]
+
+
+        blacklist = {
+            "government",
+            "india",
+            "uidai",
+            "aadhaar",
+            "unique",
+            "identification",
+            "authority",
+            "enrollment",
+            "help",
+        }
+
+
+        for line in reversed(candidates):
 
             text = line.text.strip()
 
             if not text:
                 continue
 
+
             lower = text.lower()
 
-            if any(word in lower for word in self.BLACKLIST):
+
+            if any(
+                word in lower
+                for word in blacklist
+            ):
                 continue
 
-            if re.search(r"\d", text):
+
+            if re.search(
+                r"\d",
+                text,
+            ):
                 continue
+
 
             words = text.split()
+
 
             if len(words) < 2:
                 continue
 
+
             if len(words) > 5:
                 continue
 
-            if not all(
-                word[0].isalpha()
-                for word in words
-            ):
-                continue
 
             return text
 
+
         return None
+
 
     ##############################################################
     # GENDER
@@ -118,38 +151,37 @@ class AadhaarParser(BaseParser):
 
     def extract_gender(
         self,
-        document: OCRDocument,
+        region: OCRRegion,
     ) -> str | None:
 
-        for line in document.lines():
+        line = region.find("male")
 
-            text = line.text.lower()
-
-            if "female" in text:
+        if line:
+            if "female" in line.text.lower():
                 return "Female"
 
-            if "male" in text:
-                return "Male"
+            return "Male"
 
         return None
 
+
     ##############################################################
-    # YEAR
+    # YEAR OF BIRTH
     ##############################################################
 
     def extract_year_of_birth(
         self,
-        document: OCRDocument,
+        region: OCRRegion,
     ) -> str | None:
 
-        for line in document.lines():
+        for line in region.lines():
 
-            lower = line.text.lower()
+            text = line.text.lower()
 
             if (
-                "birth" in lower
-                or "year" in lower
-                or "yob" in lower
+                "birth" in text
+                or "year" in text
+                or "yob" in text
             ):
 
                 match = re.search(
@@ -162,6 +194,7 @@ class AadhaarParser(BaseParser):
 
         return None
 
+
     ##############################################################
     # AADHAAR NUMBER
     ##############################################################
@@ -171,12 +204,12 @@ class AadhaarParser(BaseParser):
         document: OCRDocument,
     ) -> str | None:
 
-        candidates = re.findall(
+        numbers = re.findall(
             r"\b\d{4}\s\d{4}\s\d{4}\b",
             document.full_text,
         )
 
-        for number in candidates:
+        for number in numbers:
 
             if number.startswith("1800"):
                 continue
