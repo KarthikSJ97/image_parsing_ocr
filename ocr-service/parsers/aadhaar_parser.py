@@ -15,11 +15,14 @@ class AadhaarParser(BaseParser):
 
         identity_region = self.get_identity_region(document)
 
+        demographic_region = self.get_demographic_region(document)
+
+
         fields = {
             "name": self.extract_name(identity_region),
             "aadhaar_number": self.extract_aadhaar_number(document),
-            "gender": self.extract_gender(identity_region),
-            "year_of_birth": self.extract_year_of_birth(identity_region),
+            "gender": self.extract_gender(demographic_region),
+            "year_of_birth": self.extract_year_of_birth(demographic_region),
         }
 
         confidence = (
@@ -217,3 +220,15 @@ class AadhaarParser(BaseParser):
             return number
 
         return None
+
+    def get_demographic_region(
+        self,
+        document: OCRDocument,
+    ) -> OCRRegion:
+
+        lines = document.between(
+            "Address",
+            "Aadhaar - Aam Aadmi",
+        )
+
+        return OCRRegion(lines)
