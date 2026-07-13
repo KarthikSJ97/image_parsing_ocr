@@ -208,8 +208,80 @@ class OCRDocument(BaseModel):
     ) -> OCRRegion:
 
         return OCRRegion(
-            self.between(
+            lines=self.between(
                 start,
                 end,
             )
+        )
+
+    def region_after(
+        self,
+        keyword: str,
+        limit: int | None = None,
+    ) -> OCRRegion:
+
+        return OCRRegion(
+            lines=self.after(
+                keyword,
+                limit,
+            )
+        )
+
+
+    def region_before(
+        self,
+        keyword: str,
+    ) -> OCRRegion:
+
+        return OCRRegion(
+            lines=self.before(
+                keyword,
+            )
+        )    
+
+    def first_line(self) -> OCRLine | None:
+
+        lines = self.lines()
+
+        if not lines:
+            return None
+
+        return lines[0]
+
+    def last_line(self) -> OCRLine | None:
+
+        lines = self.lines()
+
+        if not lines:
+            return None
+
+        return lines[-1]
+
+    @property
+    def page_count(self) -> int:
+        return len(self.pages)  
+
+    @property
+    def is_empty(self) -> bool:
+        return self.page_count == 0     
+
+    def contains(
+        self,
+        keyword: str,
+    ) -> bool:
+
+        return self.find(keyword) is not None     
+
+    def fuzzy_contains(
+        self,
+        keyword: str,
+        threshold: float = 0.80,
+    ) -> bool:
+
+        return (
+            self.fuzzy_find(
+                keyword,
+                threshold,
+            )
+            is not None
         )    
