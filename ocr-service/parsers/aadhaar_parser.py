@@ -1,45 +1,33 @@
 import re
 
-from models.extraction_result import ExtractionResult
-from models.ocr_document import OCRDocument
 from models.ocr_region import OCRRegion
 from parsers.base_parser import BaseParser
 
 
 class AadhaarParser(BaseParser):
 
-    def parse(
-        self,
-        document: OCRDocument,
-    ) -> ExtractionResult:
+    def __init__(self):
+        super().__init__()
 
-        identity_region = self.get_identity_region(document)
+        self.identity_region: OCRRegion | None = None
 
-        demographic_region = self.get_demographic_region(document)
+        self.demographic_region: OCRRegion | None = None
 
+    def extract(self):
 
-        fields = {
-            "name": self.extract_name(identity_region),
-            "aadhaar_number": self.extract_aadhaar_number(document),
-            "gender": self.extract_gender(demographic_region),
-            "year_of_birth": self.extract_year_of_birth(demographic_region),
+        return {
+            "name": self.extract_name(),
+            "gender": self.extract_gender(),
+            "year_of_birth": self.extract_year_of_birth(),
+            "aadhaar_number": self.extract_aadhaar_number(),
+            "address": self.extract_address(),
         }
 
-        confidence = (
-            sum(
-                value is not None
-                for value in fields.values()
-            )
-            /
-            len(fields)
-        )
+    def preprocess(self):
 
-        return ExtractionResult(
-            document_type="aadhaar",
-            confidence=confidence,
-            fields=fields,
-            raw_text=document.full_text,
-        )
+        self.identity_region = self.get_identity_region()
+
+        self.demographic_region = self.get_demographic_region()    
 
 
     ##############################################################
@@ -47,16 +35,13 @@ class AadhaarParser(BaseParser):
     ##############################################################
 
     def get_identity_region(
-        self,
-        document: OCRDocument,
+        self
     ) -> OCRRegion:
 
-        lines = document.between(
+        return self.navigator.region_between(
             "Government of India",
             "Address",
         )
-
-        return OCRRegion(lines)
 
 
     ##############################################################
@@ -64,11 +49,10 @@ class AadhaarParser(BaseParser):
     ##############################################################
 
     def extract_name(
-        self,
-        region: OCRRegion,
+        self
     ) -> str | None:
 
-        lines = region.lines()
+        lines = self.identity_region.lines()
 
         father_index = None
 
@@ -152,12 +136,9 @@ class AadhaarParser(BaseParser):
     # GENDER
     ##############################################################
 
-    def extract_gender(
-        self,
-        region: OCRRegion,
-    ) -> str | None:
+    def extract_gender(self) -> str | None:
 
-        line = region.find("male")
+        line = self.identity_region.find("male")
 
         if line:
             if "female" in line.text.lower():
@@ -173,11 +154,10 @@ class AadhaarParser(BaseParser):
     ##############################################################
 
     def extract_year_of_birth(
-        self,
-        region: OCRRegion,
+        self
     ) -> str | None:
 
-        for line in region.lines():
+        for line in self.identity_region.lines():
 
             text = line.text.lower()
 
@@ -203,13 +183,12 @@ class AadhaarParser(BaseParser):
     ##############################################################
 
     def extract_aadhaar_number(
-        self,
-        document: OCRDocument,
+        self
     ) -> str | None:
 
         numbers = re.findall(
             r"\b\d{4}\s\d{4}\s\d{4}\b",
-            document.full_text,
+            self.document.full_text,
         )
 
         for number in numbers:
@@ -221,14 +200,9 @@ class AadhaarParser(BaseParser):
 
         return None
 
-    def get_demographic_region(
-        self,
-        document: OCRDocument,
-    ) -> OCRRegion:
+    def get_demographic_region(self) -> OCRRegion:
 
-        lines = document.between(
+        return self.navigator.region_between(
             "Address",
             "Aadhaar - Aam Aadmi",
         )
-
-        return OCRRegion(lines)

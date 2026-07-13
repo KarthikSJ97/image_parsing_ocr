@@ -10,10 +10,11 @@ class OCRRegion:
         self._lines = lines
 
 
+    @property
     def lines(self) -> list[OCRLine]:
         return self._lines
 
-
+    @property
     def text(self) -> str:
         return "\n".join(
             line.text
@@ -28,7 +29,7 @@ class OCRRegion:
 
         keyword = keyword.lower()
 
-        for line in self._lines:
+        for line in self:
             if keyword in line.text.lower():
                 return line
 
@@ -44,7 +45,7 @@ class OCRRegion:
 
         return [
             line
-            for line in self._lines
+            for line in self
             if keyword in line.text.lower()
         ]
 
@@ -147,4 +148,25 @@ class OCRRegion:
 
     @property
     def is_empty(self) -> bool:
-        return len(self.lines) == 0    
+        return len(self._lines) == 0
+
+    @property
+    def size(self) -> int:
+        return len(self._lines)    
+
+    def __len__(self):
+        return len(self._lines)    
+
+    def __iter__(self):
+        return iter(self._lines)    
+
+    def __getitem__(self, index):
+        return self._lines[index]    
+
+    @property
+    def first(self):
+        return self._lines[0] if self._lines else None
+
+    @property
+    def last(self):
+        return self._lines[-1] if self._lines else None    
