@@ -285,3 +285,77 @@ class OCRDocument(BaseModel):
             )
             is not None
         )    
+
+    def above(
+        self,
+        line: OCRLine,
+    ) -> list[OCRLine]:
+
+        page = self.find_page(line)
+
+        if page is None:
+            return []
+
+        return page.above(line)    
+
+    def left_of(
+        self,
+        line: OCRLine,
+    ) -> list[OCRLine]:
+
+        page = self.find_page(line)
+
+        if page is None:
+            return []
+
+        return page.left_of(line)    
+
+    def right_of(
+        self,
+        line: OCRLine,
+    ) -> list[OCRLine]:
+
+        page = self.find_page(line)
+
+        if page is None:
+            return []
+
+        return page.right_of(line)    
+
+    def nearest_above(
+        self,
+        line: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = self.above(line)
+
+        if not candidates:
+            return None
+
+        return candidates[0]    
+
+    def nearest_left(
+        self,
+        line: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = self.left_of(line)
+
+        if not candidates:
+            return None
+
+        return candidates[0]    
+
+    def nearest_right(
+        self,
+        line: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = self.right_of(line)
+
+        if not candidates:
+            return None
+
+        return candidates[0]    
+
+        

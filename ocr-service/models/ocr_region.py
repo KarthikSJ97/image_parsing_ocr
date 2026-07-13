@@ -144,3 +144,7 @@ class OCRRegion:
             candidates,
             key=lambda line: line.center_x,
         )    
+
+    @property
+    def is_empty(self) -> bool:
+        return len(self.lines) == 0    
