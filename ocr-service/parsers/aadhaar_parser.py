@@ -13,28 +13,30 @@ class AadhaarParser(BaseParser):
 
     REGIONS = REGIONS
 
-    def preprocess(self):
-        self.identity_region = self.region("identity")
-        self.demographic_region = self.region("demographic")
-
     def extract(self):
 
         return {
-            "aadhaar_number": AadhaarNumberExtractor().extract(self.document),
 
-            "name": NameExtractor().extract(
-                self.identity_region,
-            ),
+            "aadhaar_number":
+                AadhaarNumberExtractor().extract(self.document),
 
-            "gender": GenderExtractor().extract(
-                self.identity_region,
-            ),
+            "name":
+                NameExtractor().extract(
+                    self.region("identity")
+                ),
 
-            "year_of_birth": YearExtractor().extract(
-                self.identity_region,
-            ),
+            "gender":
+                GenderExtractor().extract(
+                    self.region("identity")
+                ),
 
-            "address": AddressExtractor().extract(
-                self.demographic_region,
-            ),
+            "year_of_birth":
+                YearExtractor().extract(
+                    self.region("identity")
+                ),
+
+            "address":
+                AddressExtractor().extract(
+                    self.region("demographic")
+                ),
         }

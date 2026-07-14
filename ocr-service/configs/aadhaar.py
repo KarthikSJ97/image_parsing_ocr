@@ -1,12 +1,15 @@
+from models.region_config import RegionConfig
+
+
 REGIONS = {
 
-    "identity": {
-        "start": "Government of India",
-        "end": "Address",
-    },
+    "identity": RegionConfig(
+        start="Government of India",
+        end="Address",
+    ),
 
-    "demographic": {
-        "start": "Address",
-        "end": "Aadhaar - Aam Aadmi",
-    },
+    "demographic": RegionConfig(
+        start="Address",
+        end="Aadhaar - Aam Aadmi",
+    ),
 }

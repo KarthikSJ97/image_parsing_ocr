@@ -11,6 +11,7 @@ class BaseParser(ABC):
         self.document: OCRDocument | None = None
         self.navigator: DocumentNavigator | None = None
         self.regions = getattr(self, "REGIONS", {})
+        self.region_cache: dict[str, OCRRegion] = {}
 
     def parse(
         self,
@@ -20,6 +21,7 @@ class BaseParser(ABC):
         self.document = document
         self.navigator = DocumentNavigator(document)
 
+        self.preprocess_regions()
         self.preprocess()
 
         result = self.extract()
@@ -35,6 +37,15 @@ class BaseParser(ABC):
         Override if required.
         """
         pass
+
+    def preprocess_regions(self):
+
+        for name, config in self.REGIONS.items():
+
+            self.region_cache[name] = self.navigator.region_between(
+                config["start"],
+                config["end"],
+            )    
 
     @abstractmethod
     def extract(self) -> dict:
@@ -112,13 +123,13 @@ class BaseParser(ABC):
             end,
         )    
 
-    def region(self, name: str):
-        config = self.regions[name]
+    def region(self, name: str) -> OCRRegion:
+        config = self.REGIONS[name]
 
         return self.navigator.region_between(
-            config["start"],
-            config["end"],
-        )    
+            config.start,
+            config.end,
+        )
 
     def region_between(
         self,
