@@ -55,7 +55,7 @@ async def extract(
             document_type=document_type.value,
         )
 
-        return result.model_dump()
+        return result
 
     finally:
         if image_path and os.path.exists(image_path):

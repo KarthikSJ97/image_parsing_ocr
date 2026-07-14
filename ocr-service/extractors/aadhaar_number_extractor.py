@@ -2,6 +2,7 @@ import re
 
 from models.ocr_document import OCRDocument
 from models.ocr_field import OCRField
+from extractors.base_extractor import BaseExtractor
 
 
 class AadhaarNumberExtractor(BaseExtractor):

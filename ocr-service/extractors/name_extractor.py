@@ -3,6 +3,8 @@ import re
 from extractors.base_extractor import BaseExtractor
 from models.ocr_document import OCRDocument
 from models.ocr_region import OCRRegion
+from models.ocr_line import OCRLine
+from models.ocr_field import OCRField
 
 
 class NameExtractor(BaseExtractor):
@@ -33,9 +35,9 @@ class NameExtractor(BaseExtractor):
     ) -> str | None:
 
         if isinstance(source, OCRDocument):
-            lines = source.lines()
+            lines = source.lines
         else:
-            lines = source.lines()
+            lines = source.lines
 
         father_index = None
 

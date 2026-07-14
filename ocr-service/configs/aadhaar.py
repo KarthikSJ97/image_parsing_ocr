@@ -1,12 +1,12 @@
 REGIONS = {
 
-    "identity": (
-        "Government of India",
-        "Address",
-    ),
+    "identity": {
+        "start": "Government of India",
+        "end": "Address",
+    },
 
-    "demographic": (
-        "Address",
-        "Aadhaar - Aam Aadmi",
-    ),
+    "demographic": {
+        "start": "Address",
+        "end": "Aadhaar - Aam Aadmi",
+    },
 }

@@ -13,3 +13,10 @@ class FlightParser(BaseParser):
             fields={},
             raw_text=document.full_text,
         )
+
+    def extract(
+        self,
+        document
+    ):
+        # TODO: implement actual IRCTC extraction
+        return {}    

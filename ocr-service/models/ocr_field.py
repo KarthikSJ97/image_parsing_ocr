@@ -35,16 +35,20 @@ class OCRField(BaseModel):
         lines: list[OCRLine],
         value: str,
     ):
+
         if not lines:
             return cls()
 
         return cls(
             value=value,
-            confidence=min(line.confidence for line in lines),
+            confidence=min(
+                line.confidence
+                for line in lines
+            ),
             source=lines[0],
             source_lines=lines,
         )
-
+        
     @classmethod
     def empty(cls):
         return cls()

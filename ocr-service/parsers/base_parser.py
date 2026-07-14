@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 from models.ocr_document import OCRDocument
 from navigation.document_navigator import DocumentNavigator
+from models.ocr_region import OCRRegion
 
 
 class BaseParser(ABC):
@@ -9,6 +10,7 @@ class BaseParser(ABC):
     def __init__(self):
         self.document: OCRDocument | None = None
         self.navigator: DocumentNavigator | None = None
+        self.regions = getattr(self, "REGIONS", {})
 
     def parse(
         self,
@@ -108,4 +110,64 @@ class BaseParser(ABC):
         return self.navigator.text_between(
             start,
             end,
+        )    
+
+    def region(self, name: str):
+        config = self.regions[name]
+
+        return self.navigator.region_between(
+            config["start"],
+            config["end"],
+        )    
+
+    def region_between(
+        self,
+        start: str,
+        end: str,
+    ):
+        return self.navigator.region_between(start, end)
+
+    def region_after(
+        self,
+        keyword: str,
+        limit: int | None = None,
+    ):
+        return self.navigator.region_after(keyword, limit)
+
+    def region_before(
+        self,
+        keyword: str,
+    ):
+        return self.navigator.region_before(keyword)
+
+    def region_above(
+        self,
+        keyword: str,
+    ):
+        return self.navigator.region_above(keyword)
+
+    def region_below(
+        self,
+        keyword: str,
+    ):
+        return self.navigator.region_below(keyword)
+
+    def region_left_of(
+        self,
+        keyword: str,
+    ):
+        return self.navigator.region_left_of(keyword)
+
+    def region_right_of(
+        self,
+        keyword: str,
+    ):
+        return self.navigator.region_right_of(keyword)    
+
+    def region(self, name: str) -> OCRRegion:
+        config = self.REGIONS[name]
+
+        return self.navigator.region_between(
+            config["start"],
+            config["end"],
         )    

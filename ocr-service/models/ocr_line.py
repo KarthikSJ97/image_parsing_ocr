@@ -34,6 +34,11 @@ class OCRLine(BaseModel):
 
     def overlaps_x(
         self,
-        other: OCRLine,
+        other: "OCRLine",
         tolerance: float = 0,
-    ) -> bool:    
+    ) -> bool:
+
+        return not (
+            self.right + tolerance < other.left
+            or other.right + tolerance < self.left
+        )

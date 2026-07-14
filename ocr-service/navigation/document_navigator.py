@@ -1,6 +1,14 @@
+from __future__ import annotations
+
 from typing import List
 from models.ocr_region import OCRRegion
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from models.ocr_document import OCRDocument
+    from models.ocr_line import OCRLine
+    from models.ocr_page import OCRPage
 
 class DocumentNavigator:
 
@@ -493,4 +501,3 @@ class DocumentNavigator:
 
         return ""    
 
-        

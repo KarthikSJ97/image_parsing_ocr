@@ -1,5 +1,6 @@
 from models.ocr_field import OCRField
 from models.ocr_region import OCRRegion
+from extractors.base_extractor import BaseExtractor
 
 
 class GenderExtractor(BaseExtractor):
