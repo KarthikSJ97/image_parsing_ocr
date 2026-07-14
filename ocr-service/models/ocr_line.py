@@ -17,3 +17,23 @@ class OCRLine(BaseModel):
 
     center_x: float
     center_y: float
+
+    @property
+    def width(self) -> float:
+        return self.right - self.left
+
+
+    @property
+    def height(self) -> float:
+        return self.bottom - self.top
+
+
+    @property
+    def area(self) -> float:
+        return self.width * self.height
+
+    def overlaps_x(
+        self,
+        other: OCRLine,
+        tolerance: float = 0,
+    ) -> bool:    
