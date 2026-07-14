@@ -1,27 +1,30 @@
+import re
+
+from extractors.base_extractor import BaseExtractor
 from models.ocr_field import OCRField
 from models.ocr_region import OCRRegion
-from extractors.base_extractor import BaseExtractor
 
 
 class GenderExtractor(BaseExtractor):
 
+    PATTERN = re.compile(
+        r"\b(male|female|transgender)\b",
+        re.IGNORECASE,
+    )
+
     def extract(
         self,
-        region: OCRRegion,
+        source: OCRRegion,
     ) -> OCRField:
 
-        line = region.find("male")
+        for line in source:
 
-        if line:
-            if "female" in line.text.lower():
+            match = self.PATTERN.search(line.text)
+
+            if match:
                 return OCRField.from_line(
                     line,
-                    "Female",
+                    value=match.group(1).title(),
                 )
-
-            return OCRField.from_line(
-                line,
-                "Male",
-            )
 
         return OCRField.empty()

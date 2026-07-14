@@ -39,13 +39,13 @@ class BaseParser(ABC):
         pass
 
     def preprocess_regions(self):
+        self.regions = {}
 
         for name, config in self.REGIONS.items():
-
-            self.region_cache[name] = self.navigator.region_between(
-                config["start"],
-                config["end"],
-            )    
+            self.regions[name] = self.navigator.region_between(
+                config.start,
+                config.end,
+            )
 
     @abstractmethod
     def extract(self) -> dict:
@@ -176,9 +176,7 @@ class BaseParser(ABC):
         return self.navigator.region_right_of(keyword)    
 
     def region(self, name: str) -> OCRRegion:
-        config = self.REGIONS[name]
-
-        return self.navigator.region_between(
-            config["start"],
-            config["end"],
-        )    
+        return self.regions.get(
+            name,
+            OCRRegion(lines=[]),
+        )

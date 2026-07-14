@@ -1,31 +1,23 @@
+import re
+from difflib import SequenceMatcher
+
+from extractors.base_extractor import BaseExtractor
 from models.ocr_field import OCRField
 from models.ocr_region import OCRRegion
 
 
-class AddressExtractor:
-
-    BLACKLIST = {
-        "address",
-        "uidai",
-        "aadhaar",
-        "government",
-        "india",
-        "unique identification authority",
-        "help",
-    }
-
-    STOP_WORDS = {
-        "aadhaar - aam aadmi",
-    }
+class AddressExtractor(BaseExtractor):
 
     def extract(
         self,
         region: OCRRegion,
+        person_name: str | None = None,
     ) -> OCRField:
 
-        address_lines = []
+        selected = []
+        seen_pincodes = set()
 
-        for line in region:
+        for line in region.lines:
 
             text = line.text.strip()
 
@@ -34,23 +26,96 @@ class AddressExtractor:
 
             lower = text.lower()
 
-            if any(word in lower for word in self.STOP_WORDS):
-                break
+            # ---------------------------------------------------------
+            # Remove person's name (fuzzy match to handle OCR mistakes)
+            # ---------------------------------------------------------
+            if person_name:
+                similarity = SequenceMatcher(
+                    None,
+                    lower,
+                    person_name.lower(),
+                ).ratio()
 
-            if any(word == lower for word in self.BLACKLIST):
+                if similarity >= 0.75:
+                    continue
+
+            # ---------------------------------------------------------
+            # Skip Aadhaar number
+            # ---------------------------------------------------------
+            if re.search(r"\d{4}\s*\d{4}\s*\d{4}", text):
                 continue
 
-            address_lines.append(line)
+            # ---------------------------------------------------------
+            # Skip DOB / Year of Birth
+            # ---------------------------------------------------------
+            if (
+                "birth" in lower
+                or "year of birth" in lower
+                or "dob" in lower
+            ):
+                continue
 
-        if not address_lines:
+            # ---------------------------------------------------------
+            # Skip gender
+            # ---------------------------------------------------------
+            if (
+                "male" in lower
+                or "female" in lower
+                or "transgender" in lower
+            ):
+                continue
+
+            # ---------------------------------------------------------
+            # Skip obvious OCR garbage
+            # ---------------------------------------------------------
+            if (
+                line.confidence < 0.60
+                and not re.search(r"\d{6}", text)
+            ):
+                continue
+
+            # ---------------------------------------------------------
+            # Normalize pincode-only OCR
+            # Example:
+            #   rgw-560087 -> 560087
+            # ---------------------------------------------------------
+            pincode_match = re.search(r"\b\d{6}\b", text)
+
+            if pincode_match:
+                pincode = pincode_match.group()
+
+                if pincode in seen_pincodes:
+                    continue
+
+                seen_pincodes.add(pincode)
+
+                if text != pincode:
+                    text = pincode
+
+            # ---------------------------------------------------------
+            # Ignore tiny OCR fragments
+            # ---------------------------------------------------------
+            if len(text) <= 1:
+                continue
+
+            # Store cleaned text
+            line.text = text
+            selected.append(line)
+
+        if not selected:
             return OCRField.empty()
 
-        address = ", ".join(
-            line.text.strip()
-            for line in address_lines
+        value = ", ".join(
+            line.text
+            for line in selected
         )
 
+        # Cleanup punctuation
+        value = re.sub(r",\s*,+", ", ", value)
+        value = re.sub(r"\s+", " ", value)
+        value = value.strip(" ,")
+
         return OCRField.from_lines(
-            address_lines,
-            address,
+            selected,
+            value,
         )
