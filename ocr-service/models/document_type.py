@@ -6,3 +6,4 @@ class DocumentType(str, Enum):
     AADHAAR = "aadhaar"
     IRCTC = "irctc"
     FLIGHT = "flight"
+    PAN = "pan"

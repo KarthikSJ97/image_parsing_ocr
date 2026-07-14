@@ -5,17 +5,15 @@ from models.ocr_field import OCRField
 from models.ocr_region import OCRRegion
 
 
-class DateExtractor(BaseExtractor):
+class PanNumberExtractor(BaseExtractor):
 
-    DATE_REGEX = re.compile(
-        r"\b\d{2}[/-]\d{2}[/-]\d{4}\b"
-    )
+    PAN_REGEX = re.compile(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b")
 
     def extract(self, region: OCRRegion) -> OCRField:
 
         for line in region.lines:
 
-            match = self.DATE_REGEX.search(line.text)
+            match = self.PAN_REGEX.search(line.text.upper())
 
             if match:
                 return OCRField.from_line(

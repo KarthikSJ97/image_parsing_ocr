@@ -1,6 +1,8 @@
+from models.region_config import RegionConfig
+
 REGIONS = {
-    "identity": (
-        "INCOME TAX DEPARTMENT",
-        "Permanent Account Number",
+    "identity": RegionConfig(
+        start="INCOME TAX DEPARTMENT",
+        end="Signature",
     ),
 }
