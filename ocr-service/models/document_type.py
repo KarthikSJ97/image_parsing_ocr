@@ -7,3 +7,4 @@ class DocumentType(str, Enum):
     IRCTC = "irctc"
     FLIGHT = "flight"
     PAN = "pan"
+    DRIVING_LICENSE = "driving_license"

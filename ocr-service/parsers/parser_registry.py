@@ -2,7 +2,7 @@ from parsers.aadhaar_parser import AadhaarParser
 from parsers.flight_parser import FlightParser
 from parsers.irctc_parser import IRCTCParser
 from parsers.pan_parser import PanParser
-
+from parsers.driving_license_parser import DrivingLicenseParser
 
 class ParserRegistry:
 
@@ -12,6 +12,7 @@ class ParserRegistry:
             "irctc": IRCTCParser(),
             "flight": FlightParser(),
             "pan": PanParser(),
+            "driving_license": DrivingLicenseParser(),
         }
 
     def get(self, document_type: str):
