@@ -2,5 +2,5 @@ from dataclasses import dataclass
 
 @dataclass
 class RegionConfig:
-    start: str
-    end: str
+    start: str | None = None
+    end: str | None = None

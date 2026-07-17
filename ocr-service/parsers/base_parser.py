@@ -42,6 +42,13 @@ class BaseParser(ABC):
         self.regions = {}
 
         for name, config in self.REGIONS.items():
+
+            if config.start is None and config.end is None:
+                self.regions[name] = OCRRegion(
+                    lines=self.document.lines(),   # ✅ call the method
+                )
+                continue
+
             self.regions[name] = self.navigator.region_between(
                 config.start,
                 config.end,

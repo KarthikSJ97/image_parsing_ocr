@@ -3,6 +3,7 @@ from parsers.flight_parser import FlightParser
 from parsers.irctc_parser import IRCTCParser
 from parsers.pan_parser import PanParser
 from parsers.driving_license_parser import DrivingLicenseParser
+from parsers.passport_parser import PassportParser
 
 class ParserRegistry:
 
@@ -13,6 +14,7 @@ class ParserRegistry:
             "flight": FlightParser(),
             "pan": PanParser(),
             "driving_license": DrivingLicenseParser(),
+            "passport": PassportParser(),
         }
 
     def get(self, document_type: str):

@@ -8,3 +8,4 @@ class DocumentType(str, Enum):
     FLIGHT = "flight"
     PAN = "pan"
     DRIVING_LICENSE = "driving_license"
+    PASSPORT = "passport"
