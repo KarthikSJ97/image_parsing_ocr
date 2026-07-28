@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from pydantic import BaseModel
 
 from models.ocr_line import OCRLine
@@ -15,6 +17,7 @@ class OCRDocument(BaseModel):
     average_confidence: float
 
     def lines(self) -> list[OCRLine]:
+
         result: list[OCRLine] = []
 
         for page in self.pages:
@@ -28,6 +31,7 @@ class OCRDocument(BaseModel):
     ) -> OCRLine | None:
 
         for page in self.pages:
+
             line = page.find(keyword)
 
             if line is not None:
@@ -54,6 +58,7 @@ class OCRDocument(BaseModel):
     ) -> OCRLine | None:
 
         for page in self.pages:
+
             line = page.fuzzy_find(
                 keyword,
                 threshold,
@@ -76,12 +81,48 @@ class OCRDocument(BaseModel):
 
         return result
 
+    def find_regex(
+        self,
+        pattern: str,
+    ) -> OCRLine | None:
+
+        matches = self.regex(pattern)
+
+        if matches:
+            return matches[0]
+
+        return None
+
+    def first_matching(
+        self,
+        predicate: Callable[[OCRLine], bool],
+    ) -> OCRLine | None:
+
+        for line in self.lines():
+
+            if predicate(line):
+                return line
+
+        return None
+
+    def all_matching(
+        self,
+        predicate: Callable[[OCRLine], bool],
+    ) -> list[OCRLine]:
+
+        return [
+            line
+            for line in self.lines()
+            if predicate(line)
+        ]
+
     def page(
         self,
         page_number: int,
     ) -> OCRPage | None:
 
         for page in self.pages:
+
             if page.page_number == page_number:
                 return page
 
@@ -242,17 +283,105 @@ class OCRDocument(BaseModel):
 
         return page.right_of(line)
 
+    def nearest_above(
+        self,
+        line: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = self.above(line)
+
+        if not candidates:
+            return None
+
+        return candidates[0]
+
     def nearest_below(
         self,
         line: OCRLine,
     ) -> OCRLine | None:
 
-        page = self.find_page(line)
+        candidates = self.below(line)
 
-        if page is None:
+        if not candidates:
             return None
 
-        return page.nearest_below(line)
+        return candidates[0]
+
+    def nearest_left(
+        self,
+        line: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = self.left_of(line)
+
+        if not candidates:
+            return None
+
+        return candidates[0]
+
+    def nearest_right(
+        self,
+        line: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = self.right_of(line)
+
+        if not candidates:
+            return None
+
+        return candidates[0]
+
+    def nearest_above_matching(
+        self,
+        line: OCRLine,
+        predicate: Callable[[OCRLine], bool],
+    ) -> OCRLine | None:
+
+        for candidate in self.above(line):
+
+            if predicate(candidate):
+                return candidate
+
+        return None
+
+    def nearest_below_matching(
+        self,
+        line: OCRLine,
+        predicate: Callable[[OCRLine], bool],
+    ) -> OCRLine | None:
+
+        for candidate in self.below(line):
+
+            if predicate(candidate):
+                return candidate
+
+        return None
+
+    def nearest_left_matching(
+        self,
+        line: OCRLine,
+        predicate: Callable[[OCRLine], bool],
+    ) -> OCRLine | None:
+
+        for candidate in self.left_of(line):
+
+            if predicate(candidate):
+                return candidate
+
+        return None
+
+    def nearest_right_matching(
+        self,
+        line: OCRLine,
+        predicate: Callable[[OCRLine], bool],
+    ) -> OCRLine | None:
+
+        for candidate in self.right_of(line):
+
+            if predicate(candidate):
+                return candidate
+
+        return None
 
     def region_between(
         self,
@@ -330,7 +459,10 @@ class OCRDocument(BaseModel):
         threshold: float = 0.80,
     ) -> bool:
 
-        return self.fuzzy_find(
-            keyword,
-            threshold,
-        ) is not None
+        return (
+            self.fuzzy_find(
+                keyword,
+                threshold,
+            )
+            is not None
+        )

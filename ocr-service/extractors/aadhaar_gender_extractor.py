@@ -5,7 +5,7 @@ from models.ocr_field import OCRField
 from models.ocr_region import OCRRegion
 
 
-class GenderExtractor(BaseExtractor):
+class AadhaarGenderExtractor(BaseExtractor):
 
     PATTERN = re.compile(
         r"\b(male|female|transgender)\b",
@@ -14,17 +14,17 @@ class GenderExtractor(BaseExtractor):
 
     def extract(
         self,
-        source: OCRRegion,
+        region: OCRRegion,
     ) -> OCRField:
 
-        for line in source:
+        for line in region.lines:
 
             match = self.PATTERN.search(line.text)
 
             if match:
                 return OCRField.from_line(
                     line,
-                    value=match.group(1).title(),
+                    match.group(1).title(),
                 )
 
         return OCRField.empty()

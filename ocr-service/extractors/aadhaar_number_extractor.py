@@ -1,11 +1,15 @@
 import re
 
+from extractors.base_extractor import BaseExtractor
 from models.ocr_document import OCRDocument
 from models.ocr_field import OCRField
-from extractors.base_extractor import BaseExtractor
 
 
 class AadhaarNumberExtractor(BaseExtractor):
+
+    PATTERN = re.compile(
+        r"\b\d{4}\s?\d{4}\s?\d{4}\b"
+    )
 
     def extract(
         self,
@@ -14,19 +18,27 @@ class AadhaarNumberExtractor(BaseExtractor):
 
         for line in document.lines():
 
-            matches = re.findall(
-                r"\b\d{4}\s\d{4}\s\d{4}\b",
+            match = self.PATTERN.search(
                 line.text,
             )
 
-            for number in matches:
+            if not match:
+                continue
 
-                if number.startswith("1800"):
-                    continue
+            number = match.group()
 
-                return OCRField.from_line(
-                    line,
-                    number,
-                )
+            if number.startswith("1800"):
+                continue
+
+            number = re.sub(
+                r"\s+",
+                " ",
+                number,
+            )
+
+            return OCRField.from_line(
+                line,
+                number,
+            )
 
         return OCRField.empty()
