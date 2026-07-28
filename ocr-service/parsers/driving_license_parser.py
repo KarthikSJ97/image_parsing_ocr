@@ -4,6 +4,7 @@ from extractors.driving_license_number_extractor import DrivingLicenseNumberExtr
 from extractors.driving_license_name_extractor import DrivingLicenseNameExtractor
 from extractors.driving_license_dob_extractor import DrivingLicenseDOBExtractor
 from extractors.driving_license_doi_extractor import DrivingLicenseDOIExtractor
+from extractors.driving_license_valid_till_extractor import DrivingLicenseValidTillExtractor
 
 from configs.driving_license import REGIONS
 
@@ -21,4 +22,5 @@ class DrivingLicenseParser(BaseParser):
             "name": DrivingLicenseNameExtractor().extract(identity),
             "date_of_birth": DrivingLicenseDOBExtractor().extract(identity),
             "date_of_issue": DrivingLicenseDOIExtractor().extract(identity),
+            "valid_till": DrivingLicenseValidTillExtractor().extract(identity),
         }
