@@ -146,6 +146,46 @@ class OCRRegion:
             key=lambda line: line.center_x,
         )    
 
+    def right_same_row(
+    self,
+    reference: OCRLine,
+    tolerance: float = 8,
+    ) -> list[OCRLine]:
+
+        return sorted(
+            (
+                line
+                for line in self._lines
+                if (
+                    line.center_x > reference.center_x
+                    and abs(
+                        line.center_y - reference.center_y
+                    ) <= tolerance
+                )
+            ),
+            key=lambda l: l.center_x,
+        )
+
+
+    def below_aligned(
+        self,
+        reference: OCRLine,
+        tolerance: float = 10,
+    ) -> list[OCRLine]:
+
+        return sorted(
+            (
+                line
+                for line in self._lines
+                if (
+                    line.center_y > reference.center_y
+                    and line.right >= reference.left - tolerance
+                    and line.left <= reference.right + tolerance
+                )
+            ),
+            key=lambda l: l.center_y,
+        )    
+
     @property
     def is_empty(self) -> bool:
         return len(self._lines) == 0

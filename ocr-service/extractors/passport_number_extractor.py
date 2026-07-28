@@ -1,23 +1,22 @@
 import re
 
 from extractors.base_extractor import BaseExtractor
-from models.ocr_document import OCRDocument
+from models.ocr_region import OCRRegion
 from models.ocr_field import OCRField
 
 
 class PassportNumberExtractor(BaseExtractor):
 
+    PASSPORT_REGEX = re.compile(r"\b[A-Z][0-9]{7}\b")
+
     def extract(
         self,
-        document: OCRDocument,
+        region: OCRRegion,
     ) -> OCRField:
 
-        pattern = r"\b[A-Z][0-9]{7}\b"
+        for line in region.lines:
 
-        for line in document.lines:
-
-            match = re.search(
-                pattern,
+            match = self.PASSPORT_REGEX.search(
                 line.text.upper(),
             )
 

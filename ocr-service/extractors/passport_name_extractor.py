@@ -1,43 +1,93 @@
+import re
+
 from extractors.base_extractor import BaseExtractor
-from models.ocr_document import OCRDocument
+from models.ocr_region import OCRRegion
 from models.ocr_field import OCRField
 
 
 class PassportNameExtractor(BaseExtractor):
 
+    NAME_PATTERN = re.compile(
+        r"^[A-Z]+(?:\s+[A-Z]+)+$"
+    )
+
+    IGNORE_WORDS = {
+        "SURNAME",
+        "GIVEN",
+        "NAME",
+        "NATIONALITY",
+        "INDIAN",
+        "INDIA",
+        "DATE",
+        "ISSUE",
+        "EXPIRY",
+        "BIRTH",
+        "SEX",
+        "PLACE",
+    }
+
+
     def extract(
         self,
-        document: OCRDocument,
+        document: OCRRegion,
     ) -> OCRField:
 
         lines = document.lines
 
-        collecting = False
-        name_lines = []
+        candidates = []
 
         for line in lines:
 
-            text = line.text.upper()
+            text = (
+                line.text
+                .upper()
+                .strip()
+            )
 
-            if "GIVEN NAME" in text:
-                collecting = True
+
+            # Ignore MRZ
+            if "<" in text:
                 continue
 
-            if collecting:
 
-                if "NATIONALITY" in text:
-                    break
+            # Ignore dates/numbers
+            if any(
+                char.isdigit()
+                for char in text
+            ):
+                continue
 
-                if line.text.strip():
-                    name_lines.append(line)
 
-        if not name_lines:
+            words = text.split()
+
+            if not words:
+                continue
+
+
+            if any(
+                word in self.IGNORE_WORDS
+                for word in words
+            ):
+                continue
+
+
+            if self.NAME_PATTERN.match(text):
+
+                candidates.append(line)
+
+
+        if not candidates:
             return OCRField.empty()
 
-        return OCRField.from_lines(
-            name_lines,
-            " ".join(
-                line.text.strip()
-                for line in name_lines
-            ),
+
+        # Select candidate between surname and nationality area
+        best = max(
+            candidates,
+            key=lambda x: x.center_y,
+        )
+
+
+        return OCRField.from_line(
+            best,
+            best.text.strip(),
         )

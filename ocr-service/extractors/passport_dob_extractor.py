@@ -1,34 +1,47 @@
 import re
 
 from extractors.base_extractor import BaseExtractor
-from models.ocr_document import OCRDocument
+from models.ocr_region import OCRRegion
 from models.ocr_field import OCRField
 
 
 class PassportDOBExtractor(BaseExtractor):
 
+    DATE_REGEX = re.compile(
+        r"\b\d{2}/\d{2}/\d{4}\b"
+    )
+
+
     def extract(
         self,
-        document: OCRDocument,
+        region: OCRRegion,
     ) -> OCRField:
 
-        lines = document.lines
 
-        for i, line in enumerate(lines):
+        for line in region.lines:
 
-            if "DATE OF BIRTH" in line.text.upper():
+            match = self.DATE_REGEX.search(
+                line.text
+            )
 
-                for candidate in lines[i + 1:]:
+            if not match:
+                continue
 
-                    match = re.search(
-                        r"\d{2}/\d{2}/\d{4}",
-                        candidate.text,
-                    )
 
-                    if match:
-                        return OCRField.from_line(
-                            candidate,
-                            match.group(),
-                        )
+            value = match.group()
+
+            year = int(
+                value[-4:]
+            )
+
+
+            # DOB usually between 1950-2020
+            if 1950 <= year <= 2020:
+
+                return OCRField.from_line(
+                    line,
+                    value,
+                )
+
 
         return OCRField.empty()
