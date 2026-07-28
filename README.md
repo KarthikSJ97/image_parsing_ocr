@@ -478,7 +478,7 @@ Example:
 ```json
 {
   "passport_number": {
-      "value": "Z4699992",
+      "value": "ZXXXXXX2",
       "confidence": 0.98
   }
 }
