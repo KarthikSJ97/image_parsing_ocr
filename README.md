@@ -498,4 +498,4 @@ Low-confidence fields can be routed for manual verification.
 
 # Note
 
-This POC is specifically designed and optimized for Indian identity documents and may require additional tuning for other document types.
+This is specifically designed and optimized for Indian identity documents and may require additional tuning for other document types.
