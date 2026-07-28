@@ -5,21 +5,54 @@ from models.ocr_field import OCRField
 
 class PassportSurnameExtractor(BaseExtractor):
 
+
     def extract(
         self,
         document: OCRDocument,
     ) -> OCRField:
 
+
         lines = document.lines
+
 
         for i, line in enumerate(lines):
 
-            if "SURNAME" in line.text.upper():
+            text = line.text.upper()
 
-                for candidate in lines[i + 1:]:
 
-                    if candidate.text.strip():
+            if "SURNAME" in text:
 
-                        return OCRField.from_line(candidate)
+                for candidate in lines[i+1:i+5]:
+
+                    value = candidate.text.strip().upper()
+
+
+                    if (
+                        value.isalpha()
+                        and len(value) > 2
+                    ):
+
+                        return OCRField.from_line(
+                            candidate,
+                            value,
+                        )
+
+
+        # fallback:
+        # Indian passport surname usually appears near top-left
+
+        for line in lines:
+
+            value = line.text.strip().upper()
+
+            if (
+                value.isalpha()
+                and len(value) > 3
+            ):
+                return OCRField.from_line(
+                    line,
+                    value,
+                )
+
 
         return OCRField.empty()

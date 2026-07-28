@@ -15,6 +15,10 @@ class OCRPage(BaseModel):
 
     lines: list[OCRLine]
 
+    ####################################################################
+    # Text Search
+    ####################################################################
+
     def find(self, keyword: str) -> OCRLine | None:
 
         keyword = keyword.lower()
@@ -25,7 +29,10 @@ class OCRPage(BaseModel):
 
         return None
 
-    def find_all(self, keyword: str) -> list[OCRLine]:
+    def find_all(
+        self,
+        keyword: str,
+    ) -> list[OCRLine]:
 
         keyword = keyword.lower()
 
@@ -77,11 +84,11 @@ class OCRPage(BaseModel):
     ) -> list[OCRLine]:
 
         return sorted(
-            [
+            (
                 line
                 for line in self.lines
                 if line.center_y > reference.center_y
-            ],
+            ),
             key=lambda l: l.center_y,
         )
 
@@ -91,11 +98,11 @@ class OCRPage(BaseModel):
     ) -> list[OCRLine]:
 
         return sorted(
-            [
+            (
                 line
                 for line in self.lines
                 if line.center_y < reference.center_y
-            ],
+            ),
             key=lambda l: -l.center_y,
         )
 
@@ -105,11 +112,11 @@ class OCRPage(BaseModel):
     ) -> list[OCRLine]:
 
         return sorted(
-            [
+            (
                 line
                 for line in self.lines
                 if line.center_x > reference.center_x
-            ],
+            ),
             key=lambda l: l.center_x,
         )
 
@@ -119,13 +126,117 @@ class OCRPage(BaseModel):
     ) -> list[OCRLine]:
 
         return sorted(
-            [
+            (
                 line
                 for line in self.lines
                 if line.center_x < reference.center_x
-            ],
+            ),
             key=lambda l: -l.center_x,
         )
+
+    ####################################################################
+    # Geometry Helpers
+    ####################################################################
+
+    def overlaps_x(
+        self,
+        reference: OCRLine,
+        tolerance: float = 10,
+    ) -> list[OCRLine]:
+
+        return [
+            line
+            for line in self.lines
+            if (
+                line.right >= reference.left - tolerance
+                and line.left <= reference.right + tolerance
+            )
+        ]
+
+    def overlaps_y(
+        self,
+        reference: OCRLine,
+        tolerance: float = 5,
+    ) -> list[OCRLine]:
+
+        return [
+            line
+            for line in self.lines
+            if (
+                line.bottom >= reference.top - tolerance
+                and line.top <= reference.bottom + tolerance
+            )
+        ]
+
+    def below_aligned(
+        self,
+        reference: OCRLine,
+        tolerance: float = 10,
+    ) -> list[OCRLine]:
+
+        return sorted(
+            (
+                line
+                for line in self.below(reference)
+                if (
+                    line.right >= reference.left - tolerance
+                    and line.left <= reference.right + tolerance
+                )
+            ),
+            key=lambda l: l.center_y,
+        )
+
+    def above_aligned(
+        self,
+        reference: OCRLine,
+        tolerance: float = 10,
+    ) -> list[OCRLine]:
+
+        return sorted(
+            (
+                line
+                for line in self.above(reference)
+                if (
+                    line.right >= reference.left - tolerance
+                    and line.left <= reference.right + tolerance
+                )
+            ),
+            key=lambda l: -l.center_y,
+        )
+
+    def right_same_row(
+        self,
+        reference: OCRLine,
+        tolerance: float = 8,
+    ) -> list[OCRLine]:
+
+        return sorted(
+            (
+                line
+                for line in self.right_of(reference)
+                if abs(line.center_y - reference.center_y) <= tolerance
+            ),
+            key=lambda l: l.center_x,
+        )
+
+    def left_same_row(
+        self,
+        reference: OCRLine,
+        tolerance: float = 8,
+    ) -> list[OCRLine]:
+
+        return sorted(
+            (
+                line
+                for line in self.left_of(reference)
+                if abs(line.center_y - reference.center_y) <= tolerance
+            ),
+            key=lambda l: -l.center_x,
+        )
+
+    ####################################################################
+    # Nearest Helpers
+    ####################################################################
 
     def nearest_below(
         self,
@@ -134,7 +245,40 @@ class OCRPage(BaseModel):
 
         candidates = self.below(reference)
 
-        if not candidates:
-            return None
+        return candidates[0] if candidates else None
 
-        return candidates[0]
+    def nearest_above(
+        self,
+        reference: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = self.above(reference)
+
+        return candidates[0] if candidates else None
+
+    def nearest_below_aligned(
+        self,
+        reference: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = self.below_aligned(reference)
+
+        return candidates[0] if candidates else None
+
+    def nearest_right(
+        self,
+        reference: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = self.right_of(reference)
+
+        return candidates[0] if candidates else None
+
+    def nearest_right_same_row(
+        self,
+        reference: OCRLine,
+    ) -> OCRLine | None:
+
+        candidates = self.right_same_row(reference)
+
+        return candidates[0] if candidates else None
