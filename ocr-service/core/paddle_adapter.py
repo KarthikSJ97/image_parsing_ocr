@@ -19,9 +19,9 @@ class PaddleAdapter:
     def __init__(self):
         self.ocr = PaddleOCR(
             lang=settings.OCR_LANGUAGE,
-            use_doc_orientation_classify=False,
-            use_doc_unwarping=False,
-            use_textline_orientation=False,
+            use_doc_orientation_classify=True,
+            use_doc_unwarping=True,
+            use_textline_orientation=True,
         )
 
     def extract(self, image_path: str) -> OCRDocument:
