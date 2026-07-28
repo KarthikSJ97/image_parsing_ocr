@@ -184,13 +184,15 @@ The extraction logic is currently optimized primarily for Indian identity docume
 
 ## 1. Clone Repository
 
-```
+Clone the repository:
+
+```bash
 git clone https://github.com/KarthikSJ97/image_parsing_ocr.git
 ```
 
 Navigate into the repository:
 
-```
+```bash
 cd image_parsing_ocr
 ```
 
@@ -200,7 +202,7 @@ cd image_parsing_ocr
 
 Run:
 
-```
+```bash
 docker compose up --build
 ```
 
@@ -214,7 +216,7 @@ Once started, the API will be available locally.
 
 ---
 
-# API Testing
+## 3. Test the API
 
 Use the provided Bruno collection:
 
@@ -248,6 +250,16 @@ Example response:
 
 ---
 
+## 4. Stop the Service
+
+To stop the running containers:
+
+```bash
+docker compose down
+```
+
+---
+
 # OCR Enhancements
 
 ## Document Orientation Handling
@@ -275,13 +287,13 @@ This improves extraction accuracy for:
 
 High-resolution mobile images can consume significant memory during OCR processing.
 
-To improve stability, images are normalized before OCR processing.
+To improve service stability, images are normalized before OCR inference.
 
 The preprocessing flow includes:
 
 - Resize large images
 - Preserve aspect ratio
-- Compress images before OCR inference
+- Compress images before OCR processing
 
 Example:
 
@@ -307,7 +319,7 @@ PaddleOCR Processing
 Benefits:
 
 - Reduced memory consumption
-- Lower OCR processing time
+- Faster OCR processing
 - Reduced chance of container restart due to memory spikes
 
 ---
@@ -325,7 +337,7 @@ Benefits:
 - OCR engine can be replaced in the future
 - Business logic remains independent
 
-Example future integrations:
+Possible future integrations:
 
 - Google Vision OCR
 - AWS Textract
@@ -369,7 +381,7 @@ Benefits:
 
 ## Field Extractors
 
-Extractors are responsible for individual fields.
+Extractors are responsible for individual field extraction.
 
 Example:
 
@@ -402,8 +414,6 @@ This allows individual extraction rules to evolve independently.
 ---
 
 # Future Improvements
-
-Potential enhancements:
 
 ## LLM-based Document Understanding
 
@@ -473,8 +483,6 @@ Possible technologies:
 
 Add confidence scoring:
 
-Example:
-
 ```json
 {
   "passport_number": {
@@ -488,16 +496,6 @@ Low-confidence fields can be routed for manual verification.
 
 ---
 
-# Stop the Service
-
-To stop containers:
-
-```
-docker compose down
-```
-
----
-
 # Note
 
-This is specifically designed and optimized for Indian identity documents and may require additional tuning for other document types.
+This POC is specifically designed and optimized for Indian identity documents and may require additional tuning for other document types.
