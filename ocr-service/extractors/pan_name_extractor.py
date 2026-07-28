@@ -7,7 +7,34 @@ from models.ocr_region import OCRRegion
 
 class PanNameExtractor(BaseExtractor):
 
-    def extract(self, region: OCRRegion) -> OCRField:
+    GOVERNMENT_WORDS = {
+        "INCOME",
+        "TAX",
+        "DEPARTMENT",
+        "GOVT",
+        "GOVERNMENT",
+        "INDIA",
+        "PERMANENT",
+        "ACCOUNT",
+        "NUMBER",
+        "CARD",
+        "SIGNATURE",
+        "NAME",
+        "FATHER",
+        "DATE",
+        "BIRTH",
+    }
+
+    PAN_REGEX = re.compile(r"[A-Z]{5}[0-9]{4}[A-Z]")
+
+    DATE_REGEX = re.compile(r"\d{2}[/-]\d{2}[/-]\d{4}")
+
+    def extract(
+        self,
+        region: OCRRegion,
+    ) -> OCRField:
+
+        candidates = []
 
         for line in region.lines:
 
@@ -16,56 +43,42 @@ class PanNameExtractor(BaseExtractor):
             if not text:
                 continue
 
-            lower = text.lower()
-
-            # Skip government header
-            if (
-                "govt" in lower
-                or "government" in lower
-                or "income tax" in lower
-            ):
+            # Ignore weak OCR
+            if line.confidence < 0.90:
                 continue
 
-            # Skip OCR garbage
-            if lower in {"hrcor"}:
-                continue
+            upper = text.upper()
 
-            # Stop before DOB
-            if re.search(
-                r"\d{2}[/-]\d{2}[/-]\d{4}",
-                text,
-            ):
-                break
-
-            # Skip father label if present
-            if (
-                "father" in lower
-                or "son of" in lower
-                or "daughter of" in lower
-            ):
-                continue
-
-            # Skip PAN label
-            if "permanent account number" in lower:
+            # Skip dates
+            if self.DATE_REGEX.search(upper):
                 continue
 
             # Skip PAN number
-            if re.fullmatch(
-                r"[A-Z]{5}[0-9]{4}[A-Z]",
-                text.replace(" ", ""),
+            if self.PAN_REGEX.fullmatch(
+                upper.replace(" ", "")
             ):
                 continue
 
-            # Name validation
-            alpha_chars = sum(
-                c.isalpha()
-                for c in text
-            )
+            # Skip headers/labels
+            if any(word in upper for word in self.GOVERNMENT_WORDS):
+                continue
 
-            if alpha_chars >= 3:
-                return OCRField.from_line(
-                    line,
-                    text,
-                )
+            words = upper.split()
 
-        return OCRField.empty()
+            # Must look like a person's name
+            if len(words) < 2:
+                continue
+
+            if not all(word.isalpha() for word in words):
+                continue
+
+            candidates.append(line)
+
+        if not candidates:
+            return OCRField.empty()
+
+        # First valid candidate
+        return OCRField.from_line(
+            candidates[0],
+            candidates[0].text,
+        )

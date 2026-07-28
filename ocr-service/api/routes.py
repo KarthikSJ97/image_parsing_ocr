@@ -1,5 +1,9 @@
+import logging
 import os
 import tempfile
+import time
+import traceback
+import uuid
 from pathlib import Path
 
 from fastapi import (
@@ -15,6 +19,8 @@ from models.document_type import DocumentType
 
 router = APIRouter()
 
+logger = logging.getLogger(__name__)
+
 SUPPORTED_EXTENSIONS = {
     ".jpg",
     ".jpeg",
@@ -23,6 +29,20 @@ SUPPORTED_EXTENSIONS = {
     ".pdf",
 }
 
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
+def validate_upload(file: UploadFile) -> str:
+    suffix = Path(file.filename).suffix.lower()
+
+    if suffix not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {suffix}",
+        )
+
+    return suffix
+
 
 @router.post("/extract")
 async def extract(
@@ -30,13 +50,14 @@ async def extract(
     document_type: DocumentType = Form(...),
     file: UploadFile = File(...),
 ):
-    suffix = Path(file.filename).suffix.lower()
+    request_id = str(uuid.uuid4())[:8]
+    start_time = time.perf_counter()
 
-    if suffix not in SUPPORTED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {suffix}",
-        )
+    logger.info("[%s] New extraction request", request_id)
+    logger.info("[%s] Document Type: %s", request_id, document_type.value)
+    logger.info("[%s] Filename: %s", request_id, file.filename)
+
+    suffix = validate_upload(file)
 
     image_path = None
 
@@ -45,21 +66,69 @@ async def extract(
             delete=False,
             suffix=suffix,
         ) as tmp:
-            tmp.write(await file.read())
+
+            while chunk := await file.read(1024 * 1024):
+                tmp.write(chunk)
+
             image_path = tmp.name
 
+        size = os.path.getsize(image_path)
+
+        logger.info("[%s] Upload Size: %s bytes", request_id, f"{size:,}")
+
+        if size > MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail="Maximum upload size exceeded",
+            )
+
         service = request.app.state.extraction_service
+
+        logger.info("[%s] Starting OCR...", request_id)
+
+        service_start = time.perf_counter()
 
         result = service.extract(
             image_path=image_path,
             document_type=document_type.value,
         )
 
+        logger.info(
+            "[%s] OCR completed in %.2fs",
+            request_id,
+            time.perf_counter() - service_start,
+        )
+
+        logger.info(
+            "[%s] Total request time %.2fs",
+            request_id,
+            time.perf_counter() - start_time,
+        )
+
         return result
+
+    except HTTPException:
+        raise
+
+    except Exception:
+        logger.exception("[%s] OCR extraction failed", request_id)
+
+        raise HTTPException(
+            status_code=500,
+            detail="OCR extraction failed",
+        )
 
     finally:
         if image_path and os.path.exists(image_path):
-            os.remove(image_path)
+            try:
+                os.remove(image_path)
+                logger.info("[%s] Deleted temp file", request_id)
+            except OSError:
+                logger.warning(
+                    "[%s] Failed to delete temp file %s",
+                    request_id,
+                    image_path,
+                )
 
 
 @router.post("/debug/ocr")
@@ -67,13 +136,7 @@ async def debug_lines(
     request: Request,
     file: UploadFile = File(...),
 ):
-    suffix = Path(file.filename).suffix.lower()
-
-    if suffix not in SUPPORTED_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {suffix}",
-        )
+    suffix = validate_upload(file)
 
     image_path = None
 
@@ -82,12 +145,14 @@ async def debug_lines(
             delete=False,
             suffix=suffix,
         ) as tmp:
-            tmp.write(await file.read())
+
+            while chunk := await file.read(1024 * 1024):
+                tmp.write(chunk)
+
             image_path = tmp.name
 
         service = request.app.state.extraction_service
 
-        # Use the adapter directly to inspect OCR output.
         document = service.adapter.extract(image_path)
 
         print("\n")
@@ -96,6 +161,7 @@ async def debug_lines(
         print("=" * 100)
 
         for page in document.pages:
+
             print(f"\nPAGE {page.page_number}")
             print("-" * 100)
 
@@ -111,9 +177,15 @@ async def debug_lines(
         return {
             "success": True,
             "pages": len(document.pages),
-            "lines": sum(len(page.lines) for page in document.pages),
+            "lines": sum(
+                len(page.lines)
+                for page in document.pages
+            ),
         }
 
     finally:
         if image_path and os.path.exists(image_path):
-            os.remove(image_path)
+            try:
+                os.remove(image_path)
+            except OSError:
+                pass

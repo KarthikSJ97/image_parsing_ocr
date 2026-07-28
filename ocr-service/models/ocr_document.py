@@ -1,11 +1,10 @@
-import re
-
 from pydantic import BaseModel
 
 from models.ocr_line import OCRLine
 from models.ocr_page import OCRPage
-from utils.text_utils import TextUtils
 from models.ocr_region import OCRRegion
+from utils.text_utils import TextUtils
+
 
 class OCRDocument(BaseModel):
 
@@ -16,9 +15,6 @@ class OCRDocument(BaseModel):
     average_confidence: float
 
     def lines(self) -> list[OCRLine]:
-        """
-        Returns all OCR lines across all pages.
-        """
         result: list[OCRLine] = []
 
         for page in self.pages:
@@ -26,10 +22,11 @@ class OCRDocument(BaseModel):
 
         return result
 
-    def find(self, keyword: str) -> OCRLine | None:
-        """
-        Returns the first matching line across all pages.
-        """
+    def find(
+        self,
+        keyword: str,
+    ) -> OCRLine | None:
+
         for page in self.pages:
             line = page.find(keyword)
 
@@ -38,10 +35,11 @@ class OCRDocument(BaseModel):
 
         return None
 
-    def find_all(self, keyword: str) -> list[OCRLine]:
-        """
-        Returns all matching lines across all pages.
-        """
+    def find_all(
+        self,
+        keyword: str,
+    ) -> list[OCRLine]:
+
         result: list[OCRLine] = []
 
         for page in self.pages:
@@ -66,7 +64,10 @@ class OCRDocument(BaseModel):
 
         return None
 
-    def regex(self, pattern: str) -> list[OCRLine]:
+    def regex(
+        self,
+        pattern: str,
+    ) -> list[OCRLine]:
 
         result: list[OCRLine] = []
 
@@ -75,41 +76,37 @@ class OCRDocument(BaseModel):
 
         return result
 
-    def page(self, page_number: int) -> OCRPage | None:
-        """
-        Returns a page by its page number.
-        """
+    def page(
+        self,
+        page_number: int,
+    ) -> OCRPage | None:
+
         for page in self.pages:
             if page.page_number == page_number:
                 return page
 
         return None
 
-    
     def after(
         self,
         keyword: str,
         limit: int | None = None,
     ) -> list[OCRLine]:
 
-        collecting = False
-        result: list[OCRLine] = []
+        lines = self.lines()
 
-        for line in self.lines():
+        index = self._find_keyword_index(
+            lines,
+            keyword,
+        )
 
-            if collecting:
-                result.append(line)
+        if index is None:
+            return []
 
-                if limit is not None and len(result) >= limit:
-                    break
+        result = lines[index + 1:]
 
-                continue
-
-            if TextUtils.fuzzy_contains(
-                line.text,
-                keyword,
-            ):
-                collecting = True
+        if limit is not None:
+            result = result[:limit]
 
         return result
 
@@ -118,19 +115,17 @@ class OCRDocument(BaseModel):
         keyword: str,
     ) -> list[OCRLine]:
 
-        result: list[OCRLine] = []
+        lines = self.lines()
 
-        for line in self.lines():
+        index = self._find_keyword_index(
+            lines,
+            keyword,
+        )
 
-            if TextUtils.fuzzy_contains(
-                line.text,
-                keyword,
-            ):
-                break
+        if index is None:
+            return lines
 
-            result.append(line)
-
-        return result
+        return lines[:index]
 
     def between(
         self,
@@ -138,30 +133,54 @@ class OCRDocument(BaseModel):
         end: str,
     ) -> list[OCRLine]:
 
-        collecting = False
-        result: list[OCRLine] = []
+        lines = self.lines()
 
-        for line in self.lines():
+        start_index = self._find_keyword_index(
+            lines,
+            start,
+        )
 
-            if not collecting:
+        if start_index is None:
+            return []
+
+        end_index = self._find_keyword_index(
+            lines,
+            end,
+            start_index + 1,
+        )
+
+        if end_index is None:
+            end_index = len(lines)
+
+        return lines[start_index + 1:end_index]
+
+    def _find_keyword_index(
+        self,
+        lines: list[OCRLine],
+        keyword: str,
+        start_index: int = 0,
+        max_window: int = 3,
+    ) -> int | None:
+
+        for i in range(start_index, len(lines)):
+
+            for window in range(1, max_window + 1):
+
+                if i + window > len(lines):
+                    break
+
+                combined = " ".join(
+                    line.text
+                    for line in lines[i:i + window]
+                )
 
                 if TextUtils.fuzzy_contains(
-                    line.text,
-                    start,
+                    combined,
+                    keyword,
                 ):
-                    collecting = True
+                    return i + window - 1
 
-                continue
-
-            if TextUtils.fuzzy_contains(
-                line.text,
-                end,
-            ):
-                break
-
-            result.append(line)
-
-        return result
+        return None
 
     def find_page(
         self,
@@ -175,6 +194,53 @@ class OCRDocument(BaseModel):
 
         return None
 
+    def above(
+        self,
+        line: OCRLine,
+    ) -> list[OCRLine]:
+
+        page = self.find_page(line)
+
+        if page is None:
+            return []
+
+        return page.above(line)
+
+    def below(
+        self,
+        line: OCRLine,
+    ) -> list[OCRLine]:
+
+        page = self.find_page(line)
+
+        if page is None:
+            return []
+
+        return page.below(line)
+
+    def left_of(
+        self,
+        line: OCRLine,
+    ) -> list[OCRLine]:
+
+        page = self.find_page(line)
+
+        if page is None:
+            return []
+
+        return page.left_of(line)
+
+    def right_of(
+        self,
+        line: OCRLine,
+    ) -> list[OCRLine]:
+
+        page = self.find_page(line)
+
+        if page is None:
+            return []
+
+        return page.right_of(line)
 
     def nearest_below(
         self,
@@ -187,19 +253,6 @@ class OCRDocument(BaseModel):
             return None
 
         return page.nearest_below(line)
-
-
-    def below(
-        self,
-        line: OCRLine,
-    ) -> list[OCRLine]:
-
-        page = self.find_page(line)
-
-        if page is None:
-            return []
-
-        return page.below(line)    
 
     def region_between(
         self,
@@ -227,7 +280,6 @@ class OCRDocument(BaseModel):
             )
         )
 
-
     def region_before(
         self,
         keyword: str,
@@ -237,7 +289,7 @@ class OCRDocument(BaseModel):
             lines=self.before(
                 keyword,
             )
-        )    
+        )
 
     def first_line(self) -> OCRLine | None:
 
@@ -259,18 +311,18 @@ class OCRDocument(BaseModel):
 
     @property
     def page_count(self) -> int:
-        return len(self.pages)  
+        return len(self.pages)
 
     @property
     def is_empty(self) -> bool:
-        return self.page_count == 0     
+        return self.page_count == 0
 
     def contains(
         self,
         keyword: str,
     ) -> bool:
 
-        return self.find(keyword) is not None     
+        return self.find(keyword) is not None
 
     def fuzzy_contains(
         self,
@@ -278,84 +330,7 @@ class OCRDocument(BaseModel):
         threshold: float = 0.80,
     ) -> bool:
 
-        return (
-            self.fuzzy_find(
-                keyword,
-                threshold,
-            )
-            is not None
-        )    
-
-    def above(
-        self,
-        line: OCRLine,
-    ) -> list[OCRLine]:
-
-        page = self.find_page(line)
-
-        if page is None:
-            return []
-
-        return page.above(line)    
-
-    def left_of(
-        self,
-        line: OCRLine,
-    ) -> list[OCRLine]:
-
-        page = self.find_page(line)
-
-        if page is None:
-            return []
-
-        return page.left_of(line)    
-
-    def right_of(
-        self,
-        line: OCRLine,
-    ) -> list[OCRLine]:
-
-        page = self.find_page(line)
-
-        if page is None:
-            return []
-
-        return page.right_of(line)    
-
-    def nearest_above(
-        self,
-        line: OCRLine,
-    ) -> OCRLine | None:
-
-        candidates = self.above(line)
-
-        if not candidates:
-            return None
-
-        return candidates[0]    
-
-    def nearest_left(
-        self,
-        line: OCRLine,
-    ) -> OCRLine | None:
-
-        candidates = self.left_of(line)
-
-        if not candidates:
-            return None
-
-        return candidates[0]    
-
-    def nearest_right(
-        self,
-        line: OCRLine,
-    ) -> OCRLine | None:
-
-        candidates = self.right_of(line)
-
-        if not candidates:
-            return None
-
-        return candidates[0]    
-
-        
+        return self.fuzzy_find(
+            keyword,
+            threshold,
+        ) is not None
